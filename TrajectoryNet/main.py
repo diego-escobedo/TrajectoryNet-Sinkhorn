@@ -225,7 +225,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         print("Density Loss", density_loss.item())
         losses += density_loss * args.top_k_reg
     losses += interp_loss
-    return final_loss
+    return losses
 
 
 def train(
