@@ -153,11 +153,12 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
             growthrates.append(growth_model(full_state))
 
     # Accumulate losses
-    losses = []
+    train_loss_fn = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")
+    losses = torch.tensor(0).to(device)
     for i, pred_z in enumerate(zs[::-1]):
         fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
-        loss = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")(pred_z, fd)
-        losses.append(loss)
+        loss = train_loss_fn(pred_z, fd)
+        losses += loss
     # logps = [logpz]
     # for i, delta_logp in enumerate(deltas[::-1]):
     #     logpx = logps[-1] - delta_logp
@@ -169,8 +170,6 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     # weights = torch.ones_like(losses).to(device)
     # if args.leaveout_timepoint >= 0:
     #     weights[args.leaveout_timepoint] = 0
-    losses = torch.mean(torch.tensor(losses)).to(device)
-    losses.requires_grad = True
 
     # Direction regularization
     if args.vecint:
@@ -225,7 +224,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         density_loss = torch.mean(values)
         print("Density Loss", density_loss.item())
         losses += density_loss * args.top_k_reg
-    final_loss = losses + interp_loss
+    losses += interp_loss
     return final_loss
 
 
