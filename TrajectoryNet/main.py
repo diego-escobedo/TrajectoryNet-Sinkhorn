@@ -162,7 +162,6 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     weights = torch.ones_like(losses).to(losses)
     if args.leaveout_timepoint >= 0:
         weights[args.leaveout_timepoint] = 0
-    print(losses, weights)
     losses = torch.mean(losses * weights)
 
     # Direction regularization
