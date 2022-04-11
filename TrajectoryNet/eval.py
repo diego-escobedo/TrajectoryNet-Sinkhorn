@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 # insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '../TrajectoryNet')
+sys.path.insert(1, './TrajectoryNet')
 
 from TrajectoryNet import dataset, eval_utils
 from TrajectoryNet.parse import parser

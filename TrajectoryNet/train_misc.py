@@ -1,9 +1,9 @@
 import six
 import math
 
-from .lib.layers.wrappers import cnf_regularization as reg_lib
-from .lib import spectral_norm, layers
-from .lib.layers.odefunc import divergence_bf, divergence_approx
+from lib.layers.wrappers import cnf_regularization as reg_lib
+from lib import spectral_norm, layers
+from lib.layers.odefunc import divergence_bf, divergence_approx
 
 
 def standard_normal_logprob(z):

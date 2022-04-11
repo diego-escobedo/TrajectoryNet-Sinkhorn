@@ -15,19 +15,23 @@ import torch.optim as optim
 
 from geomloss import SamplesLoss
 
-from TrajectoryNet.lib.growth_net import GrowthNet
-from TrajectoryNet.lib import utils
-from TrajectoryNet.lib.visualize_flow import visualize_transform
-from TrajectoryNet.lib.viz_scrna import (
+# insert at 1, 0 is the script path (or '' in REPL)
+import sys
+sys.path.insert(1, './TrajectoryNet')
+
+from lib.growth_net import GrowthNet
+from lib import utils
+from lib.visualize_flow import visualize_transform
+from lib.viz_scrna import (
     save_trajectory,
     trajectory_to_video,
     save_vectors,
 )
-from TrajectoryNet.lib.viz_scrna import save_trajectory_density
+from lib.viz_scrna import save_trajectory_density
 
 
 # from train_misc import standard_normal_logprob
-from TrajectoryNet.train_misc import (
+from train_misc import (
     set_cnf_options,
     count_nfe,
     count_parameters,
@@ -40,8 +44,8 @@ from TrajectoryNet.train_misc import (
     build_model_tabular,
 )
 
-from TrajectoryNet import dataset
-from TrajectoryNet.parse import parser
+import dataset
+from parse import parser
 
 matplotlib.use("Agg")
 
@@ -152,8 +156,8 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     losses = []
     for i, pred_z in enumerate(zs[::-1]):
         fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
-        l = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")(pred_z, fd)
-        losses.append(l)
+        loss = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")(pred_z, fd)
+        losses.append(loss)
     # logps = [logpz]
     # for i, delta_logp in enumerate(deltas[::-1]):
     #     logpx = logps[-1] - delta_logp
@@ -166,6 +170,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     # if args.leaveout_timepoint >= 0:
     #     weights[args.leaveout_timepoint] = 0
     losses = torch.mean(torch.tensor(losses)).to(device)
+    losses.requires_grad = True
 
     # Direction regularization
     if args.vecint:
@@ -220,8 +225,8 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         density_loss = torch.mean(values)
         print("Density Loss", density_loss.item())
         losses += density_loss * args.top_k_reg
-    losses += interp_loss
-    return losses
+    final_loss = losses + interp_loss
+    return final_loss
 
 
 def train(
