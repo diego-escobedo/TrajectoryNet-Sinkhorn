@@ -154,7 +154,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
 
     # Accumulate losses
     train_loss_fn = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")
-    losses = torch.tensor(0).to(device)
+    losses = torch.tensor(0).type(torch.float32).to(device)
     for i, pred_z in enumerate(zs[::-1]):
         fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
         loss = train_loss_fn(pred_z, fd)
