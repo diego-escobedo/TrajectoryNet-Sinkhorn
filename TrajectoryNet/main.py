@@ -120,7 +120,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         x = torch.from_numpy(x).type(torch.float32).to(device)
 
         if i > 0:
-            x = torch.cat((z, x))
+            #x = torch.cat((z, x))
             zs.append(z)
         zero = torch.zeros(x.shape[0], 1).to(x)
 
@@ -153,23 +153,17 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
             growthrates.append(growth_model(full_state))
 
     # Accumulate losses
+    losses = [torch.tensor(0).type(torch.float32).to(device)]
     train_loss_fn = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")
-    losses = torch.tensor(0).type(torch.float32).to(device)
     for i, pred_z in enumerate(zs[::-1]):
         fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
-        loss = train_loss_fn(pred_z, fd)
-        losses += loss
-    # logps = [logpz]
-    # for i, delta_logp in enumerate(deltas[::-1]):
-    #     logpx = logps[-1] - delta_logp
-    #     if args.use_growth:
-    #         logpx += torch.log(torch.clamp(growthrates[i], 1e-4, 1e4))
-    #     logps.append(logpx[: -args.batch_size])
-    #     losses.append(-torch.mean(logpx[-args.batch_size :]))
-    # losses = torch.stack(losses)
-    # weights = torch.ones_like(losses).to(device)
-    # if args.leaveout_timepoint >= 0:
-    #     weights[args.leaveout_timepoint] = 0
+        losses.append(torch.mean(train_loss_fn(pred_z, fd)))
+    losses = torch.stack(losses)
+    weights = torch.ones_like(losses).to(losses)
+    if args.leaveout_timepoint >= 0:
+        weights[args.leaveout_timepoint] = 0
+    print(losses, weights)
+    losses = torch.mean(losses * weights)
 
     # Direction regularization
     if args.vecint:
