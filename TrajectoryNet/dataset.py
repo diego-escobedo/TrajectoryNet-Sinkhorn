@@ -318,7 +318,7 @@ class EBData(SCData):
         self.embedding_name = embedding_name
         self.use_velocity = use_velocity
         if version == 5:
-            data_file = "../data/eb_velocity_v5.npz"
+            data_file = "./data/eb_velocity_v5.npz"
         else:
             raise ValueError("Unknown Version number")
         self.load(data_file, max_dim)

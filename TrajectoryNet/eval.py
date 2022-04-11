@@ -3,6 +3,9 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import matplotlib
+import sys
+# insert at 1, 0 is the script path (or '' in REPL)
+sys.path.insert(1, '../TrajectoryNet')
 
 from TrajectoryNet import dataset, eval_utils
 from TrajectoryNet.parse import parser
@@ -352,7 +355,7 @@ def main(args):
     # rand_idx = np.random.randint(end_time_data.shape[0], size=5000)
     # end_time_data = end_time_data[rand_idx,:]
     integrate_backwards(end_time_data, model, args.save, ntimes=100, device=device)
-    exit()
+    #exit()
     losses_list = []
     # for factor in np.linspace(0.05, 0.95, 19):
     # for factor in np.linspace(0.91, 0.99, 9):

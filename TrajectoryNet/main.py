@@ -13,6 +13,8 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
+from geomloss import SamplesLoss
+
 from TrajectoryNet.lib.growth_net import GrowthNet
 from TrajectoryNet.lib import utils
 from TrajectoryNet.lib.visualize_flow import visualize_transform
@@ -148,18 +150,22 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
 
     # Accumulate losses
     losses = []
-    logps = [logpz]
-    for i, delta_logp in enumerate(deltas[::-1]):
-        logpx = logps[-1] - delta_logp
-        if args.use_growth:
-            logpx += torch.log(torch.clamp(growthrates[i], 1e-4, 1e4))
-        logps.append(logpx[: -args.batch_size])
-        losses.append(-torch.mean(logpx[-args.batch_size :]))
-    losses = torch.stack(losses)
-    weights = torch.ones_like(losses).to(logpx)
-    if args.leaveout_timepoint >= 0:
-        weights[args.leaveout_timepoint] = 0
-    losses = torch.mean(losses * weights)
+    for i, pred_z in enumerate(zs[::-1]):
+        fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
+        l = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")(pred_z, fd)
+        losses.append(l)
+    # logps = [logpz]
+    # for i, delta_logp in enumerate(deltas[::-1]):
+    #     logpx = logps[-1] - delta_logp
+    #     if args.use_growth:
+    #         logpx += torch.log(torch.clamp(growthrates[i], 1e-4, 1e4))
+    #     logps.append(logpx[: -args.batch_size])
+    #     losses.append(-torch.mean(logpx[-args.batch_size :]))
+    # losses = torch.stack(losses)
+    # weights = torch.ones_like(losses).to(device)
+    # if args.leaveout_timepoint >= 0:
+    #     weights[args.leaveout_timepoint] = 0
+    losses = torch.mean(torch.tensor(losses)).to(device)
 
     # Direction regularization
     if args.vecint:
