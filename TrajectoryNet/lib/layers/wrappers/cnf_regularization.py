@@ -16,16 +16,14 @@ class RegularizedODEfunc(nn.Module):
             pass
 
         with torch.enable_grad():
-            x, logp = state[:2]
+            x = state[:1]
             x.requires_grad_(True)
-            logp.requires_grad_(True)
             t.requires_grad_(True)
-            dstate = self.odefunc(t, (x, logp))
-            if len(state) > 2:
+            dstate = self.odefunc(t, x)
+            if len(state) > 1:
                 dx = dstate[:1]
-                dlogp = torch.zeros_like(dx)
                 reg_states = tuple(
-                    reg_fn(x, logp, dx, dlogp, t, SharedContext)
+                    reg_fn(x, dx, t, SharedContext)
                     for reg_fn in self.regularization_fns
                 )
                 return dstate + reg_states
@@ -42,33 +40,31 @@ def _batch_root_mean_squared(tensor):
     return torch.mean(torch.norm(tensor, p=2, dim=1) / tensor.shape[1] ** 0.5)
 
 
-def l1_regularzation_fn(x, logp, dx, dlogp, t, unused_context):
-    del x, logp, dlogp
+def l1_regularzation_fn(x,  dx,  t, unused_context):
+    del x,  
     return torch.mean(torch.abs(dx))
 
 
-def l2_regularzation_fn(x, logp, dx, dlogp, t, unused_context):
-    del x, logp, dlogp
+def l2_regularzation_fn(x,  dx,  t, unused_context):
+    del x,  
     return _batch_root_mean_squared(dx)
 
 
-def squared_l2_regularization_fn(x, logp, dx, dlogp, t, unused_context):
-    del x, logp, dlogp
+def squared_l2_regularization_fn(x,  dx,  t, unused_context):
+    del x, 
     to_return = dx.view(dx.shape[0], -1)
     # print(t)
     return torch.mean(torch.pow(torch.norm(to_return, p=2, dim=1), 2))
 
 
-def directional_l2_regularization_fn(x, logp, dx, dlogp, t, unused_context):
-    del logp, dlogp
+def directional_l2_regularization_fn(x,  dx,  t, unused_context):
     directional_dx = torch.autograd.grad(dx, x, dx, create_graph=True)[0]
     # print(directional_dx.shape)
     # exit()
     return _batch_root_mean_squared(directional_dx)
 
 
-def directional_l2_change_penalty_fn(x, logp, dx, dlogp, t, context):
-    del logp, dlogp
+def directional_l2_change_penalty_fn(x,  dx,  t, context):
     # For now we ignore the directional dx penalty as this complicates things
     directional_dx = torch.autograd.grad(dx, x, dx, create_graph=True)[0]
     dfdt = _get_minibatch_jacobian(dx, t)
@@ -76,8 +72,8 @@ def directional_l2_change_penalty_fn(x, logp, dx, dlogp, t, context):
     return torch.mean(torch.norm(dfdt_full, p=2) / dfdt_full.shape[0] ** 0.5)
 
 
-def jacobian_frobenius_regularization_fn(x, logp, dx, dlogp, t, context):
-    del logp, dlogp, t
+def jacobian_frobenius_regularization_fn(x,  dx,  t, context):
+    del   t
     if hasattr(context, "jac"):
         jac = context.jac
     else:
@@ -86,8 +82,8 @@ def jacobian_frobenius_regularization_fn(x, logp, dx, dlogp, t, context):
     return _batch_root_mean_squared(jac)
 
 
-def jacobian_diag_frobenius_regularization_fn(x, logp, dx, dlogp, t, context):
-    del logp, dlogp, t
+def jacobian_diag_frobenius_regularization_fn(x,  dx,  t, context):
+    del   t
     if hasattr(context, "jac"):
         jac = context.jac
     else:
@@ -99,8 +95,8 @@ def jacobian_diag_frobenius_regularization_fn(x, logp, dx, dlogp, t, context):
     return _batch_root_mean_squared(diagonal)
 
 
-def jacobian_offdiag_frobenius_regularization_fn(x, logp, dx, dlogp, t, context):
-    del logp, dlogp, t
+def jacobian_offdiag_frobenius_regularization_fn(x,  dx,  t, context):
+    del   t
     if hasattr(context, "jac"):
         jac = context.jac
     else:
