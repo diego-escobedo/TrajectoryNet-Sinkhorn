@@ -123,6 +123,8 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
 
         # transform to previous timepoint
         z = model(x, zero, integration_times=integration_times)
+        if type(z) == tuple:
+            z = z[0]
 
         # Straightline regularization
         # Integrate to random point at time t and assert close to (1 - t) * end + t * start
