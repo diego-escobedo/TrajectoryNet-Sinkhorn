@@ -137,7 +137,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     if args.interp_reg:
         print("interp_loss", interp_loss)
 
-    logpz = args.data.base_density()(z)
+    #logpz = args.data.base_density()(z)
 
     # build growth rates
     if args.use_growth:
