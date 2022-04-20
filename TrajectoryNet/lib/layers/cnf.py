@@ -33,11 +33,6 @@ class CNF(nn.Module):
 
     def forward(self, z, logpz=None, integration_times=None, reverse=False):
 
-        if logpz is None:
-            _logpz = torch.zeros(z.shape[0], 1).to(z)
-        else:
-            _logpz = logpz
-
         if integration_times is None:
             integration_times = torch.tensor([0.0, self.sqrt_end_time * self.sqrt_end_time]).to(z)
         if reverse:
@@ -52,7 +47,7 @@ class CNF(nn.Module):
         if self.training:
             state_t = odeint(
                 self.odefunc,
-                (z, _logpz) + reg_states,
+                (z,) + reg_states,
                 integration_times.to(z),
                 atol=[self.atol, self.atol] + [1e20] * len(reg_states) if self.solver == 'dopri5' else self.atol,
                 rtol=[self.rtol, self.rtol] + [1e20] * len(reg_states) if self.solver == 'dopri5' else self.rtol,
@@ -62,7 +57,7 @@ class CNF(nn.Module):
         else:
             state_t = odeint(
                 self.odefunc,
-                (z, _logpz),
+                (z,),
                 integration_times.to(z),
                 atol=self.test_atol,
                 rtol=self.test_rtol,
@@ -72,13 +67,10 @@ class CNF(nn.Module):
         if len(integration_times) == 2:
             state_t = tuple(s[1] for s in state_t)
 
-        z_t, logpz_t = state_t[:2]
-        self.regularization_states = state_t[2:]
+        z_t  = state_t[:1]
+        self.regularization_states = state_t[1:]
 
-        if logpz is not None:
-            return z_t, logpz_t
-        else:
-            return z_t
+        return z_t
 
     def get_regularization_states(self):
         reg_states = self.regularization_states
