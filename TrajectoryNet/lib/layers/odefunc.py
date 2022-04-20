@@ -28,10 +28,10 @@ def _get_minibatch_jacobian(y, x):
     """Computes the Jacobian of y wrt x assuming minibatch-mode.
 
     Args:
-      y: (N, ...) with a total of D_y elements in ...
-      x: (N, ...) with a total of D_x elements in ...
+        y: (N, ...) with a total of D_y elements in ...
+        x: (N, ...) with a total of D_x elements in ...
     Returns:
-      The minibatch Jacobian matrix of shape (N, D_y, D_x)
+        The minibatch Jacobian matrix of shape (N, D_y, D_x)
     """
     assert y.shape[0] == x.shape[0]
     y = y.view(y.shape[0], -1)
@@ -40,7 +40,7 @@ def _get_minibatch_jacobian(y, x):
     jac = []
     for j in range(y.shape[1]):
         dy_j_dx = torch.autograd.grad(y[:, j], x, torch.ones_like(y[:, j]), retain_graph=True,
-                                      create_graph=True)[0].view(x.shape[0], -1)
+                                        create_graph=True)[0].view(x.shape[0], -1)
         jac.append(torch.unsqueeze(dy_j_dx, 1))
     jac = torch.cat(jac, 1)
     return jac

@@ -102,7 +102,6 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     """
 
     # Backward pass accumulating losses, previous state and deltas
-    deltas = []
     zs = []
     z = None
     interp_loss = 0.0
@@ -110,7 +109,6 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         # tp counts down from last
         integration_times = torch.tensor([itp - args.time_scale, itp])
         integration_times = integration_times.type(torch.float32).to(device)
-        # integration_times.requires_grad = True
 
         # load data and add noise
         idx = args.data.sample_index(args.batch_size, tp)
@@ -120,13 +118,11 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         x = torch.from_numpy(x).type(torch.float32).to(device)
 
         if i > 0:
-            #x = torch.cat((z, x))
             zs.append(z)
         zero = torch.zeros(x.shape[0], 1).to(x)
 
         # transform to previous timepoint
-        z, delta_logp = model(x, zero, integration_times=integration_times)
-        deltas.append(delta_logp)
+        z = model(x, zero, integration_times=integration_times)
 
         # Straightline regularization
         # Integrate to random point at time t and assert close to (1 - t) * end + t * start

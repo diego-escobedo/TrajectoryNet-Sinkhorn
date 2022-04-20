@@ -1,17 +1,13 @@
 anndata==0.8.0
 certifi==2021.10.8
 cycler==0.11.0
-flake8 @ file:///opt/conda/conda-bld/flake8_1648129545443/work
 fonttools==4.32.0
 geomloss==0.2.5
-h5py @ file:///Users/ktietz/ci_310/h5py_1644262287129/work
-importlib-metadata @ file:///private/var/folders/nz/j6p8yfhx1mv_0grj5xl4650h0000gp/T/abs_croot-5pqd2z6f/importlib-metadata_1648710902288/work
 joblib==1.1.0
 keopscore==2.0
 kiwisolver==1.4.2
 llvmlite==0.38.0
 matplotlib==3.5.1
-mccabe @ file:///opt/conda/conda-bld/mccabe_1644221741721/work
 natsort==8.1.0
 networkx==2.8
 numba==0.55.1
@@ -23,8 +19,6 @@ Pillow==9.1.0
 pkgconfig==1.5.5
 POT==0.8.1.0
 pybind11==2.9.2
-pycodestyle @ file:///tmp/build/80754af9/pycodestyle_1636635402688/work
-pyflakes @ file:///tmp/build/80754af9/pyflakes_1636644436481/work
 pykeops==2.0
 pynndescent==0.5.6
 pyparsing==3.0.8
@@ -44,4 +38,3 @@ torchdiffeq==0.0.1
 tqdm==4.64.0
 typing_extensions==4.1.1
 umap-learn==0.5.2
-zipp @ file:///opt/conda/conda-bld/zipp_1641824620731/work
