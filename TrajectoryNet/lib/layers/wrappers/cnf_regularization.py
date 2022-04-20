@@ -16,12 +16,12 @@ class RegularizedODEfunc(nn.Module):
             pass
 
         with torch.enable_grad():
-            x = state[0]
+            x = state[:1]
             x.requires_grad_(True)
             t.requires_grad_(True)
             dstate = self.odefunc(t, x)
             if len(state) > 1:
-                dx = dstate[0]
+                dx = dstate[:1]
                 reg_states = tuple(
                     reg_fn(x, dx, t, SharedContext)
                     for reg_fn in self.regularization_fns
