@@ -22,7 +22,8 @@ class RegularizedODEfunc(nn.Module):
             t.requires_grad_(True)
             dstate = self.odefunc(t, (x, logp))
             if len(state) > 2:
-                dx, dlogp = dstate[:2]
+                dx = dstate[:1]
+                dlogp = torch.zeros_like(dx)
                 reg_states = tuple(
                     reg_fn(x, logp, dx, dlogp, t, SharedContext)
                     for reg_fn in self.regularization_fns
