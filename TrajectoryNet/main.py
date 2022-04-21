@@ -128,8 +128,8 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         zero = torch.zeros(x.shape[0], 1).to(x)
 
         # transform to previous timepoint
-        z_f = model(x, logpz=None, integration_times=integration_times_f)
-        z_b = model(x, logpz=None, integration_times=integration_times_b, reverse=True)
+        z_f = model(x, logpx=None, integration_times=integration_times_f)
+        z_b = model(x, logpx=None, integration_times=integration_times_b, reverse=True)
 
         # Straightline regularization
         # Integrate to random point at time t and assert close to (1 - t) * end + t * start
