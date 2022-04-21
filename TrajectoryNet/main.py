@@ -102,14 +102,13 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     """
 
     # Backward pass accumulating losses, previous state and deltas
-    zs = []
-    z = None
+    zs_f = []
+    zs_b = []
+    z_f = None
+    z_b  = None
     interp_loss = 0.0
     for i, (itp, tp) in enumerate(zip(args.int_tps[::-1], args.timepoints[::-1])):
-        # tp counts down from last
-        integration_times = torch.tensor([itp - args.time_scale, itp])
-        integration_times = integration_times.type(torch.float32).to(device)
-
+        
         # load data and add noise
         idx = args.data.sample_index(args.batch_size, tp)
         x = args.data.get_data()[idx]
@@ -118,11 +117,18 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         x = torch.from_numpy(x).type(torch.float32).to(device)
 
         if i > 0:
-            zs.append(z)
+            zs_f.append(z_f)
+            zs_b.append(z_b)
         zero = torch.zeros(x.shape[0], 1).to(x)
 
         # transform to previous timepoint
-        z, delta_logp = model(x, zero, integration_times=integration_times)
+        # tp counts down from last
+        integration_times = torch.tensor([itp - args.time_scale, itp])
+        integration_times = integration_times.type(torch.float32).to(device)
+        z_f, delta_logp = model(x, zero, integration_times=integration_times)
+        integration_times = torch.tensor([itp, itp + args.time_scale])
+        integration_times = integration_times.type(torch.float32).to(device)
+        z_b, delta_logp = model(x, zero, integration_times=integration_times, reverse=True)
         # Straightline regularization
         # Integrate to random point at time t and assert close to (1 - t) * end + t * start
         if args.interp_reg:
@@ -150,7 +156,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     # Accumulate losses
     losses = [torch.tensor(0).type(torch.float32).to(device)]
     train_loss_fn = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")
-    for i, pred_z in enumerate(zs[::-1]):
+    for i, pred_z in enumerate(zs_f[::-1]):
         fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
         losses.append(torch.mean(train_loss_fn(pred_z, fd)))
     losses = torch.stack(losses)

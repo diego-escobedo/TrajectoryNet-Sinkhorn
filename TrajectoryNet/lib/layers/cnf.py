@@ -68,7 +68,6 @@ class CNF(nn.Module):
                 rtol=self.test_rtol,
                 method=self.test_solver,
             )
-
         if len(integration_times) == 2:
             state_t = tuple(s[1] for s in state_t)
 
