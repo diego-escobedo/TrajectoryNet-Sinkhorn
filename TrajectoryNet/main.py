@@ -122,8 +122,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         zero = torch.zeros(x.shape[0], 1).to(x)
 
         # transform to previous timepoint
-        z = model(x, zero, integration_times=integration_times)
-
+        z, delta_logp = model(x, zero, integration_times=integration_times)
         # Straightline regularization
         # Integrate to random point at time t and assert close to (1 - t) * end + t * start
         if args.interp_reg:
