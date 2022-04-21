@@ -105,7 +105,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     zs_f = []
     zs_b = []
     z_f = None
-    z_b
+    z_b = None
     interp_loss = 0.0
     for i, (itp, tp) in enumerate(zip(args.int_tps[::-1], args.timepoints[::-1])):
         # tp counts down from last
@@ -165,7 +165,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         losses_b.append(torch.mean(train_loss_fn(pred_z_b, fd)))
     losses_f = torch.stack(losses_f)
     losses_b = torch.stack(losses_b)
-    weights = torch.ones_like(losses).to(losses)
+    weights = torch.ones_like(losses_f).to(losses_f)
     if args.leaveout_timepoint >= 0:
         weights[args.leaveout_timepoint] = 0
     losses = torch.mean(losses_f * weights) + torch.mean(losses_b * weights)
