@@ -16,9 +16,10 @@ class RegularizedODEfunc(nn.Module):
             pass
 
         with torch.enable_grad():
-            x = state[:1]
+            x = state[0]
             x.requires_grad_(True)
             t.requires_grad_(True)
+            logp = torch.zeros_like(x)
             dstate = self.odefunc(t, (x, logp))
             if len(state) > 2:
                 dx, dlogp = dstate[:2]
