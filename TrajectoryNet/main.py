@@ -156,9 +156,11 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     # Accumulate losses
     losses = [torch.tensor(0).type(torch.float32).to(device)]
     train_loss_fn = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")
-    for i, pred_z in enumerate(zs_f[::-1]):
-        fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
-        losses.append(torch.mean(train_loss_fn(pred_z, fd)))
+    for i, (pred_z_f, pred_z_b) in enumerate(zip(zs_f[::-1], zs_b[::-1])):
+        fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z_f)
+        f = torch.mean(train_loss_fn(pred_z_f, fd))
+        b = torch.mean(train_loss_fn(pred_z_b, fd))
+        losses.append(f+b)
     losses = torch.stack(losses)
     weights = torch.ones_like(losses).to(losses)
     if args.leaveout_timepoint >= 0:
