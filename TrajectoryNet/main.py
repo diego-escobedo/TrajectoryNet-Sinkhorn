@@ -100,47 +100,53 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     The growth model is a single model of time independent cell growth /
     death rate defined as a variation from uniform.
     """
+    #Forward Pass including intermediate steps
+    idx = args.data.sample_index(args.batch_size, args.timepoints[0])
+    x = args.data.get_data()[idx]
+    x = torch.from_numpy(x).type(torch.float32).to(device)
+    zero = torch.zeros(x.shape[0], 1).to(x)
+    integration_times = torch.tensor(args.int_tps).type(torch.float32).to(device)
+    z_f, delta_logp = model(x, zero, integration_times=integration_times)
+    z_b, delta_logp = model(x, zero, integration_times=integration_times, reverse=True)
+    # # Backward pass accumulating losses, previous state and deltas
+    # zs_f = []
+    # zs_b = []
+    # z_f = None
+    # z_b  = None
+    # interp_loss = 0.0
+    # for i, (itp, tp) in enumerate(zip(args.int_tps[::-1], args.timepoints[::-1])):
+    #     # load data and add noise
+    #     idx = args.data.sample_index(args.batch_size, tp)
+    #     x = args.data.get_data()[idx]
+    #     if args.training_noise > 0.0:
+    #         x += np.random.randn(*x.shape) * args.training_noise
+    #     x = torch.from_numpy(x).type(torch.float32).to(device)
 
-    # Backward pass accumulating losses, previous state and deltas
-    zs_f = []
-    zs_b = []
-    z_f = None
-    z_b  = None
-    interp_loss = 0.0
-    for i, (itp, tp) in enumerate(zip(args.int_tps[::-1], args.timepoints[::-1])):
-        
-        # load data and add noise
-        idx = args.data.sample_index(args.batch_size, tp)
-        x = args.data.get_data()[idx]
-        if args.training_noise > 0.0:
-            x += np.random.randn(*x.shape) * args.training_noise
-        x = torch.from_numpy(x).type(torch.float32).to(device)
+    #     if i > 0:
+    #         zs_f.append(z_f)
+    #         zs_b.append(z_b)
+    #     zero = torch.zeros(x.shape[0], 1).to(x)
 
-        if i > 0:
-            zs_f.append(z_f)
-            zs_b.append(z_b)
-        zero = torch.zeros(x.shape[0], 1).to(x)
-
-        # transform to previous timepoint
-        # tp counts down from last
-        integration_times = torch.tensor([itp - args.time_scale, itp])
-        integration_times = integration_times.type(torch.float32).to(device)
-        z_f, delta_logp = model(x, zero, integration_times=integration_times)
-        integration_times = torch.tensor([itp, itp + args.time_scale])
-        integration_times = integration_times.type(torch.float32).to(device)
-        z_b, delta_logp = model(x, zero, integration_times=integration_times, reverse=True)
-        # Straightline regularization
-        # Integrate to random point at time t and assert close to (1 - t) * end + t * start
-        if args.interp_reg:
-            t = np.random.rand()
-            int_t = torch.tensor([itp - t * args.time_scale, itp])
-            int_t = int_t.type(torch.float32).to(device)
-            int_x = model(x, integration_times=int_t)
-            int_x = int_x.detach()
-            actual_int_x = x * (1 - t) + z * t
-            interp_loss += F.mse_loss(int_x, actual_int_x)
-    if args.interp_reg:
-        print("interp_loss", interp_loss)
+    #     # transform to previous timepoint
+    #     # tp counts down from last
+    #     integration_times = torch.tensor([itp - args.time_scale, itp])
+    #     integration_times = integration_times.type(torch.float32).to(device)
+    #     z_f, delta_logp = model(x, zero, integration_times=integration_times)
+    #     integration_times = torch.tensor([itp, itp + args.time_scale])
+    #     integration_times = integration_times.type(torch.float32).to(device)
+    #     z_b, delta_logp = model(x, zero, integration_times=integration_times, reverse=True)
+    #     # Straightline regularization
+    #     # Integrate to random point at time t and assert close to (1 - t) * end + t * start
+    #     if args.interp_reg:
+    #         t = np.random.rand()
+    #         int_t = torch.tensor([itp - t * args.time_scale, itp])
+    #         int_t = int_t.type(torch.float32).to(device)
+    #         int_x = model(x, integration_times=int_t)
+    #         int_x = int_x.detach()
+    #         actual_int_x = x * (1 - t) + z * t
+    #         interp_loss += F.mse_loss(int_x, actual_int_x)
+    # if args.interp_reg:
+    #     print("interp_loss", interp_loss)
 
     #logpz = args.data.base_density()(z)
 
@@ -156,7 +162,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     # Accumulate losses
     losses = [torch.tensor(0).type(torch.float32).to(device)]
     train_loss_fn = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")
-    for i, (pred_z_f, pred_z_b) in enumerate(zip(zs_f[::-1], zs_b[::-1])):
+    for i, (pred_z_f, pred_z_b) in enumerate(zip(z_f, z_b)):
         fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z_f)
         f = torch.mean(train_loss_fn(pred_z_f, fd))
         b = torch.mean(train_loss_fn(pred_z_b, fd))
@@ -220,7 +226,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
         density_loss = torch.mean(values)
         print("Density Loss", density_loss.item())
         losses += density_loss * args.top_k_reg
-    losses += interp_loss
+    #losses += interp_loss
     return losses
 
 
