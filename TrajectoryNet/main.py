@@ -106,8 +106,8 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     x = torch.from_numpy(x).type(torch.float32).to(device)
     zero = torch.zeros(x.shape[0], 1).to(x)
     integration_times = torch.tensor(args.int_tps).type(torch.float32).to(device)
-    z_f, delta_logp = model(x, zero, integration_times=integration_times)
-    z_b, delta_logp = model(x, zero, integration_times=integration_times, reverse=True)
+    z_f = model(x, logpx=None, integration_times=integration_times)
+    z_b = model(x, logpx=None, integration_times=integration_times, reverse=True)
     # # Backward pass accumulating losses, previous state and deltas
     # zs_f = []
     # zs_b = []
@@ -443,12 +443,13 @@ def main(args):
     # logger
     print(args.no_display_loss)
     utils.makedirs(args.save)
+
     logger = utils.get_logger(
         logpath=os.path.join(args.save, "logs"),
         filepath=os.path.abspath(__file__),
         displaying=~args.no_display_loss,
     )
-
+    
     if args.layer_type == "blend":
         logger.info("!! Setting time_scale from None to 1.0 for Blend layers.")
         args.time_scale = 1.0
