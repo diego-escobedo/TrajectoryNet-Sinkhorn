@@ -277,7 +277,7 @@ def train(
             loss = loss + reg_loss
         total_time = count_total_time(model)
         nfe_forward = count_nfe(model)
-
+        print(loss.shape)
         loss.backward()
         optimizer.step()
 
