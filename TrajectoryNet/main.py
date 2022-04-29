@@ -104,10 +104,10 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     idx = args.data.sample_index(args.batch_size, args.timepoints[0])
     x = args.data.get_data()[idx]
     x = torch.from_numpy(x).type(torch.float32).to(device)
-    zero = torch.zeros(x.shape[0], 1).to(x)
+
     integration_times = torch.tensor(args.int_tps).type(torch.float32).to(device)
     z_f = model(x, logpx=None, integration_times=integration_times)
-    z_b = model(x, logpx=None, integration_times=integration_times, reverse=True)
+    z_b = z_f#model(x, logpx=None, integration_times=integration_times, reverse=True)
     # # Backward pass accumulating losses, previous state and deltas
     # zs_f = []
     # zs_b = []
@@ -269,15 +269,19 @@ def train(
         if len(regularization_coeffs) > 0:
             # Only regularize on the last timepoint
             reg_states = get_regularization(model, regularization_coeffs)
-            reg_loss = sum(
-                reg_state * coeff
-                for reg_state, coeff in zip(reg_states, regularization_coeffs)
-                if coeff != 0
-            )
+
+            weights = torch.ones_like(reg_states[0]).to(reg_states[0])
+            if args.leaveout_timepoint >= 0:
+                weights[args.leaveout_timepoint] = 0
+
+            reg_loss_l = []
+            for reg_state, coeff in zip(reg_states, regularization_coeffs):
+                reg_loss_l.append(torch.mean(reg_state * weights) * coeff)
+            reg_loss = torch.mean(torch.stack(reg_loss_l, dim=0))
             loss = loss + reg_loss
         total_time = count_total_time(model)
         nfe_forward = count_nfe(model)
-        print(loss.shape)
+
         loss.backward()
         optimizer.step()
 
@@ -306,7 +310,7 @@ def train(
         )
         if len(regularization_coeffs) > 0:
             log_message = append_regularization_to_log(
-                log_message, regularization_fns, reg_states
+                log_message, regularization_fns, reg_loss_l
             )
         logger.info(log_message)
 
