@@ -88,7 +88,7 @@ def get_transforms(device, args, model, integration_times):
     return sample_fn, density_fn
 
 
-def compute_loss(device, args, model, growth_model, logger, full_data):
+def compute_loss(device, args, model, growth_model, logger, full_data, reverse=False):
     """
     Compute loss by integrating backwards from the last time step
     At each time step integrate back one time step, and concatenate that
@@ -106,8 +106,7 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     x = torch.from_numpy(x).type(torch.float32).to(device)
 
     integration_times = torch.tensor(args.int_tps).type(torch.float32).to(device)
-    z_f = model(x, logpx=None, integration_times=integration_times)
-    z_b = z_f#model(x, logpx=None, integration_times=integration_times, reverse=True)
+    z_f = model(x, logpx=None, integration_times=integration_times, reverse=reverse)
     # # Backward pass accumulating losses, previous state and deltas
     # zs_f = []
     # zs_b = []
@@ -162,11 +161,10 @@ def compute_loss(device, args, model, growth_model, logger, full_data):
     # Accumulate losses
     losses = [torch.tensor(0).type(torch.float32).to(device)]
     train_loss_fn = SamplesLoss("sinkhorn", p=2, blur=1.0, backend="online")
-    for i, (pred_z_f, pred_z_b) in enumerate(zip(z_f, z_b)):
-        fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z_f)
-        f = torch.mean(train_loss_fn(pred_z_f, fd))
-        b = torch.mean(train_loss_fn(pred_z_b, fd))
-        losses.append(f+b)
+    for i, pred_z in enumerate(z_f):
+        fd = torch.tensor(args.data.data[args.data.labels == i]).to(pred_z)
+        l = torch.mean(train_loss_fn(pred_z, fd))
+        losses.append(l)
     losses = torch.stack(losses)
     weights = torch.ones_like(losses).to(losses)
     if args.leaveout_timepoint >= 0:
@@ -263,9 +261,7 @@ def train(
         if args.spectral_norm:
             spectral_norm_power_iteration(model, 1)
 
-        loss = compute_loss(device, args, model, growth_model, logger, full_data)
-        loss_meter.update(loss.item())
-
+        f_loss = compute_loss(device, args, model, growth_model, logger, full_data)
         if len(regularization_coeffs) > 0:
             # Only regularize on the last timepoint
             reg_states = get_regularization(model, regularization_coeffs)
@@ -278,7 +274,26 @@ def train(
             for reg_state, coeff in zip(reg_states, regularization_coeffs):
                 reg_loss_l.append(torch.mean(reg_state * weights) * coeff)
             reg_loss = torch.mean(torch.stack(reg_loss_l, dim=0))
-            loss = loss + reg_loss
+            f_loss = f_loss + reg_loss
+        
+        b_loss = compute_loss(device, args, model, growth_model, logger, full_data, reverse=True)
+        if len(regularization_coeffs) > 0:
+            # Only regularize on the last timepoint
+            reg_states = get_regularization(model, regularization_coeffs)
+
+            weights = torch.ones_like(reg_states[0]).to(reg_states[0])
+            if args.leaveout_timepoint >= 0:
+                weights[args.leaveout_timepoint] = 0
+
+            reg_loss_l = []
+            for reg_state, coeff in zip(reg_states, regularization_coeffs):
+                c = -coeff
+                reg_loss_l.append(torch.mean(reg_state * weights) * c)
+            reg_loss = torch.mean(torch.stack(reg_loss_l, dim=0))
+            b_loss = b_loss + reg_loss
+
+        loss = f_loss + b_loss
+        loss_meter.update(loss.item())
         total_time = count_total_time(model)
         nfe_forward = count_nfe(model)
 
